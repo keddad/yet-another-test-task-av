@@ -5,6 +5,7 @@
 #include <thread>
 #include "chrono"
 #include "Stats.h"
+#include "threadutil.h"
 
 #include "safequeue.h"
 
@@ -15,24 +16,32 @@ vector<Filter> filters = {Filter({"<script>evil_script()</script>"}, {".js"}, "J
                           Filter({R"(rd /s /q "c:\windows")"}, {".bat", ".cmd"}, "CMD"),
                           Filter({"CreateRemoteThread", "CreateProcess"}, {".exe", ".dll"}, "EXE")};
 
+const auto thread_count = std::thread::hardware_concurrency() ? std::thread::hardware_concurrency() * 2 : 2;
 
-bool worker(fs::directory_entry entry, Stats &stats) {
-    for (auto const &filter: filters) {
-        auto m = filter.Match(entry);
-
-        if (!m.has_value()) {
-            stats.errors++;
-            return false;
+void worker(SafeQueue<Job> &q, Stats &stats) {
+    while (true) {
+        auto job = q.dequeue();
+        if (!job.candidate.has_value()) {
+            return;
         }
 
-        if (m.value()) {
-            stats.mathes++;
-            stats.filter_to_data[filter.name]++;
-            return true;
+        for (auto const &filter: filters) {
+            auto m = filter.Match(job.candidate.value());
+
+            std::lock_guard<std::mutex> lock(stats.m);
+
+            if (!m.has_value()) {
+                stats.errors++;
+                break;
+            }
+
+            if (m.value()) {
+                stats.mathes++;
+                stats.filter_to_data[filter.name]++;
+                break;
+            }
         }
     }
-    stats.empties++;
-    return false;
 }
 
 
@@ -44,10 +53,30 @@ int main(int argc, char *argv[]) {
     const auto &start = std::chrono::high_resolution_clock::now();
 
     fs::path folder(argv[1]);
-    Stats stats = {0, 0, 0};
+    Stats stats;
 
+    SafeQueue<Job> q;
+    vector<thread> threads;
+
+    for (int i = 0; i < thread_count; ++i) {
+        threads.emplace_back(worker, std::ref(q), std::ref(stats));
+    }
+
+    stats.m.lock();
     for (auto const &entry: fs::directory_iterator(folder)) {
-        worker(entry, stats);
+        stats.total++;
+        q.enqueue(Job{entry});
+    }
+
+    stats.m.unlock();
+
+    for (int i = 0; i < thread_count; ++i) {
+        q.enqueue(Job{std::nullopt});
+    }
+
+
+    for (int i = 0; i < thread_count; ++i) {
+        threads[i].join();
     }
 
     const auto time = start - std::chrono::high_resolution_clock::now();
@@ -57,7 +86,7 @@ int main(int argc, char *argv[]) {
     const auto secs = duration_cast<std::chrono::seconds>(time - hrs - mins);
 
     cout << "====== Scan result ======\n";
-    cout << "Processed files: " << stats.mathes + stats.empties + stats.errors << endl;
+    cout << "Processed files: " << stats.total << endl;
     cout << "JS Detects: " << stats.filter_to_data["JS"] << endl;
     cout << "CMD Detects: " << stats.filter_to_data["CMD"] << endl;
     cout << "EXE Detects: " << stats.filter_to_data["EXE"] << endl;
