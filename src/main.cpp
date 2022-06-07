@@ -1,18 +1,18 @@
-#include <iostream>
-#include <filesystem>
 #include "Filter.h"
-#include <thread>
 #include "Stats.h"
 #include "Job.h"
-
 #include "SafeQueue.h"
+
+#include <thread>
+#include <iostream>
+#include <filesystem>
 
 namespace fs = std::filesystem;
 using namespace std;
 
-vector<Filter> filters = {Filter({"<script>evil_script()</script>"}, {".js"}, "JS"),
-                          Filter({R"(rd /s /q "c:\windows")"}, {".bat", ".cmd"}, "CMD"),
-                          Filter({"CreateRemoteThread", "CreateProcess"}, {".exe", ".dll"}, "EXE")};
+const vector<Filter> filters = {Filter({"<script>evil_script()</script>"}, {".js"}, "JS"),
+                                Filter({R"(rd /s /q "c:\windows")"}, {".bat", ".cmd"}, "CMD"),
+                                Filter({"CreateRemoteThread", "CreateProcess"}, {".exe", ".dll"}, "EXE")};
 
 const auto thread_count = std::thread::hardware_concurrency() ? std::thread::hardware_concurrency() * 2 : 2;
 

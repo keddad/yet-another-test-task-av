@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <optional>
 
 #ifndef YET_ANOTHER_TEST_TASK_AV_THREADUTIL_H
 #define YET_ANOTHER_TEST_TASK_AV_THREADUTIL_H
