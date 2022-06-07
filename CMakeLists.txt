@@ -7,4 +7,4 @@ add_compile_options(-O0)
 
 add_executable(yet_another_test_task_av
         src/main.cpp
-        src/safequeue.h src/Filter.h src/Stats.h src/threadutil.h)
+        src/SafeQueue.h src/Filter.h src/Stats.h src/Job.h)

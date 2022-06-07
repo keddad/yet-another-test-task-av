@@ -1,13 +1,11 @@
 #include <iostream>
-#include <fstream>
 #include <filesystem>
 #include "Filter.h"
 #include <thread>
-#include "chrono"
 #include "Stats.h"
-#include "threadutil.h"
+#include "Job.h"
 
-#include "safequeue.h"
+#include "SafeQueue.h"
 
 namespace fs = std::filesystem;
 using namespace std;

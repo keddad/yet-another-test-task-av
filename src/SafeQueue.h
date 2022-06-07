@@ -12,7 +12,7 @@ public:
     SafeQueue()
             : q(), m(), c() {}
 
-    ~SafeQueue(void) {}
+    ~SafeQueue() {}
 
     // Add an element to the queue.
     void enqueue(T t) {
